@@ -24,3 +24,6 @@ class GameResponse(BaseModel):
     dealer_hand: List[CardSchema]
     result: Optional[str] = None
     balance: int
+    split_hand: Optional[List[CardSchema]] = None
+    split_result: Optional[str] = None
+    on_split: Optional[bool] = None

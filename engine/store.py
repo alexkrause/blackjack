@@ -55,11 +55,13 @@ class GameStore:
                 self._deduct_bet(game.player_id)
             game.double()
         elif action == "split":
+            self._deduct_bet(game.player_id)
             game.split()
         else:
             raise ValueError(f"Unknown action: {action}")
 
         if game.state.value == "complete":
             self._apply_payout(game.player_id, game.payout())
+            self._apply_payout(game.player_id, game.split_payout())
 
         return game
