@@ -404,7 +404,7 @@
         init() {
           let id = localStorage.getItem('bj_player_id');
           if (!id) {
-            id = crypto.randomUUID();
+            id = 'p-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 9);
             localStorage.setItem('bj_player_id', id);
           }
           this.player_id = id;
