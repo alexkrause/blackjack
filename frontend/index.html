@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Blackjack</title>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --felt: #2d6a2d;
+      --felt-dark: #1a3d1a;
+      --card-w: 65px;
+      --card-h: 95px;
+      --card-radius: 8px;
+      --red: #c0392b;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--felt-dark);
+      color: #fff;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Header ─────────────────────────────────────────── */
+    header {
+      background: rgba(0,0,0,0.35);
+      padding: 12px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2px solid rgba(255,255,255,0.08);
+    }
+
+    header h1 {
+      font-size: 1.4rem;
+      font-weight: 700;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: #f1c40f;
+      text-shadow: 0 0 12px rgba(241,196,15,0.45);
+    }
+
+    .balance {
+      font-size: 1rem;
+      font-weight: 600;
+      color: #a8d5a2;
+      letter-spacing: 1px;
+    }
+
+    /* ── Main ────────────────────────────────────────────── */
+    main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      padding: 20px 16px;
+      gap: 14px;
+      max-width: 820px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    /* ── Section panels ──────────────────────────────────── */
+    .panel {
+      padding: 14px;
+      border-radius: 10px;
+      background: rgba(0,0,0,0.18);
+    }
+
+    .section-label {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: rgba(255,255,255,0.5);
+      margin-bottom: 10px;
+    }
+
+    .section-label .score {
+      color: rgba(255,255,255,0.85);
+      font-weight: 700;
+    }
+
+    .section-label .hand-result {
+      font-weight: 700;
+      margin-left: 6px;
+    }
+
+    /* ── Hands row (split layout) ────────────────────────── */
+    .hands-row {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .hands-row .panel {
+      flex: 1;
+      min-width: 160px;
+    }
+
+    .panel.active-hand {
+      outline: 2px solid rgba(241,196,15,0.65);
+    }
+
+    .panel.inactive-hand {
+      opacity: 0.45;
+    }
+
+    /* ── Cards ───────────────────────────────────────────── */
+    .hand {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      min-height: var(--card-h);
+      align-items: flex-start;
+    }
+
+    .card {
+      width: var(--card-w);
+      height: var(--card-h);
+      border-radius: var(--card-radius);
+      background: #fff;
+      border: 1px solid #ccc;
+      box-shadow: 2px 3px 8px rgba(0,0,0,0.45);
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 5px 5px;
+      user-select: none;
+      flex-shrink: 0;
+    }
+
+    .card.face-down {
+      background: repeating-linear-gradient(
+        45deg,
+        #1a237e,
+        #1a237e 6px,
+        #283593 6px,
+        #283593 12px
+      );
+      border: 2px solid #3949ab;
+    }
+
+    .card.red  { color: var(--red); }
+    .card.black { color: #1a1a1a; }
+
+    .rank-top {
+      font-size: 0.82rem;
+      font-weight: 800;
+      line-height: 1;
+    }
+
+    .suit-center {
+      font-size: 1.45rem;
+      text-align: center;
+      line-height: 1;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+    }
+
+    .rank-bottom {
+      font-size: 0.82rem;
+      font-weight: 800;
+      line-height: 1;
+      align-self: flex-end;
+      transform: rotate(180deg);
+    }
+
+    /* ── Result banner ───────────────────────────────────── */
+    .result-banner {
+      text-align: center;
+      padding: 14px;
+      border-radius: 8px;
+      font-size: 1.3rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      background: rgba(0,0,0,0.3);
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .result-win       { color: #2ecc71; }
+    .result-blackjack { color: #f1c40f; }
+    .result-lose      { color: #e74c3c; }
+    .result-push      { color: #95a5a6; }
+
+    /* ── Footer / controls ───────────────────────────────── */
+    footer {
+      background: rgba(0,0,0,0.3);
+      padding: 16px;
+      border-top: 2px solid rgba(255,255,255,0.08);
+    }
+
+    .controls {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      max-width: 820px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    button {
+      padding: 12px 28px;
+      border: none;
+      border-radius: 6px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      letter-spacing: 0.5px;
+      transition: transform 0.1s, filter 0.1s;
+      min-width: 80px;
+      min-height: 44px;
+    }
+
+    button:hover:not(:disabled) { filter: brightness(1.12); }
+    button:active:not(:disabled) { transform: scale(0.96); }
+    button:disabled { opacity: 0.45; cursor: not-allowed; }
+
+    .btn-deal     { background: #27ae60; color: #fff; }
+    .btn-hit      { background: #2980b9; color: #fff; }
+    .btn-stand    { background: #e67e22; color: #fff; }
+    .btn-double   { background: #8e44ad; color: #fff; }
+    .btn-split    { background: #16a085; color: #fff; }
+    .btn-new-game { background: #27ae60; color: #fff; }
+    .btn-cashout  { background: #c0392b; color: #fff; }
+
+    .error-msg {
+      color: #e74c3c;
+      font-size: 0.88rem;
+      text-align: center;
+    }
+
+    /* ── Responsive ──────────────────────────────────────── */
+    @media (max-width: 480px) {
+      :root {
+        --card-w: 52px;
+        --card-h: 76px;
+      }
+      .rank-top, .rank-bottom { font-size: 0.7rem; }
+      .suit-center { font-size: 1.15rem; }
+      header h1 { font-size: 1.1rem; }
+      button { padding: 11px 18px; font-size: 0.88rem; }
+    }
+  </style>
+</head>
+<body x-data="game()" x-init="init()">
+
+  <header>
+    <h1>&spades; Blackjack &clubs;</h1>
+    <div class="balance" x-show="balance !== null">
+      Balance: $<span x-text="balance"></span>
+    </div>
+  </header>
+
+  <main>
+
+    <!-- Dealer -------------------------------------------------->
+    <div class="panel">
+      <div class="section-label">
+        Dealer
+        <span class="score" x-show="dealer_hand.length > 0">
+          &mdash; <span x-text="calcValue(dealer_hand)"></span>
+        </span>
+      </div>
+      <div class="hand">
+        <template x-for="(card, i) in dealer_hand" :key="i">
+          <div class="card" :class="cardClass(card)">
+            <template x-if="card.face_up">
+              <span class="rank-top" x-text="card.rank"></span>
+            </template>
+            <template x-if="card.face_up">
+              <span class="suit-center" x-text="suitSymbol(card.suit)"></span>
+            </template>
+            <template x-if="card.face_up">
+              <span class="rank-bottom" x-text="card.rank"></span>
+            </template>
+          </div>
+        </template>
+      </div>
+    </div>
+
+    <!-- Result banner ------------------------------------------->
+    <div class="result-banner" x-show="state === 'complete'">
+      <span :class="resultClass(result)" x-text="resultLabel(result)"></span>
+      <template x-if="split_hand !== null">
+        <span>
+          &nbsp;|&nbsp; Split:
+          <span :class="resultClass(split_result)" x-text="resultLabel(split_result)"></span>
+        </span>
+      </template>
+    </div>
+
+    <!-- Player hands -------------------------------------------->
+    <template x-if="player_hand.length > 0">
+      <div :class="split_hand ? 'hands-row' : ''">
+
+        <!-- Primary hand -->
+        <div class="panel"
+             :class="split_hand ? (on_split ? 'inactive-hand' : 'active-hand') : ''">
+          <div class="section-label">
+            Your Hand
+            <span class="score">&mdash; <span x-text="calcValue(player_hand)"></span></span>
+            <template x-if="state === 'complete' && split_hand !== null">
+              <span class="hand-result" :class="resultClass(result)" x-text="resultLabel(result)"></span>
+            </template>
+          </div>
+          <div class="hand">
+            <template x-for="(card, i) in player_hand" :key="i">
+              <div class="card" :class="cardClass(card)">
+                <span class="rank-top"    x-text="card.rank"></span>
+                <span class="suit-center" x-text="suitSymbol(card.suit)"></span>
+                <span class="rank-bottom" x-text="card.rank"></span>
+              </div>
+            </template>
+          </div>
+        </div>
+
+        <!-- Split hand -->
+        <template x-if="split_hand !== null">
+          <div class="panel" :class="on_split ? 'active-hand' : 'inactive-hand'">
+            <div class="section-label">
+              Split Hand
+              <span class="score">&mdash; <span x-text="calcValue(split_hand)"></span></span>
+              <template x-if="state === 'complete'">
+                <span class="hand-result" :class="resultClass(split_result)" x-text="resultLabel(split_result)"></span>
+              </template>
+            </div>
+            <div class="hand">
+              <template x-for="(card, i) in split_hand" :key="i">
+                <div class="card" :class="cardClass(card)">
+                  <span class="rank-top"    x-text="card.rank"></span>
+                  <span class="suit-center" x-text="suitSymbol(card.suit)"></span>
+                  <span class="rank-bottom" x-text="card.rank"></span>
+                </div>
+              </template>
+            </div>
+          </div>
+        </template>
+
+      </div>
+    </template>
+
+  </main>
+
+  <footer>
+    <div class="controls">
+
+      <!-- Idle -->
+      <div class="btn-row" x-show="state === 'idle'">
+        <button class="btn-deal" @click="startGame()" :disabled="loading">Deal</button>
+      </div>
+
+      <!-- Playing -->
+      <div class="btn-row" x-show="state === 'playing'">
+        <button class="btn-hit"    @click="doAction('hit')"    :disabled="loading">Hit</button>
+        <button class="btn-stand"  @click="doAction('stand')"  :disabled="loading">Stand</button>
+        <button class="btn-double" @click="doAction('double')" :disabled="loading || !canDouble">Double</button>
+        <template x-if="canSplit">
+          <button class="btn-split" @click="doAction('split')" :disabled="loading">Split</button>
+        </template>
+      </div>
+
+      <!-- Complete -->
+      <div class="btn-row" x-show="state === 'complete'">
+        <button class="btn-new-game" @click="startGame()" :disabled="loading">New Game</button>
+        <button class="btn-cashout"  @click="cashOut()">Cash Out</button>
+      </div>
+
+      <div class="error-msg" x-show="error" x-text="error"></div>
+
+    </div>
+  </footer>
+
+  <script>
+    function game() {
+      return {
+        player_id:    null,
+        game_id:      null,
+        state:        'idle',
+        player_hand:  [],
+        dealer_hand:  [],
+        split_hand:   null,
+        split_result: null,
+        on_split:     false,
+        result:       null,
+        balance:      null,
+        loading:      false,
+        error:        null,
+
+        init() {
+          let id = localStorage.getItem('bj_player_id');
+          if (!id) {
+            id = crypto.randomUUID();
+            localStorage.setItem('bj_player_id', id);
+          }
+          this.player_id = id;
+        },
+
+        get canSplit() {
+          if (this.state !== 'playing' || this.split_hand !== null || this.on_split) return false;
+          return this.player_hand.length === 2
+              && this.player_hand[0].rank === this.player_hand[1].rank;
+        },
+
+        get canDouble() {
+          if (this.state !== 'playing') return false;
+          if (this.on_split) return this.split_hand?.length === 2;
+          return this.player_hand.length === 2;
+        },
+
+        async startGame() {
+          await this.callApi('/game/start', 'POST', { player_id: this.player_id });
+        },
+
+        async doAction(action) {
+          await this.callApi(`/game/${this.game_id}/action`, 'POST', { action });
+        },
+
+        cashOut() {
+          this.game_id      = null;
+          this.state        = 'idle';
+          this.player_hand  = [];
+          this.dealer_hand  = [];
+          this.split_hand   = null;
+          this.split_result = null;
+          this.on_split     = false;
+          this.result       = null;
+        },
+
+        async callApi(path, method, body) {
+          this.loading = true;
+          this.error   = null;
+          try {
+            const res = await fetch(path, {
+              method,
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(body),
+            });
+            if (!res.ok) {
+              const err = await res.json();
+              this.error = err.detail || 'An error occurred';
+              return;
+            }
+            this.applyResponse(await res.json());
+          } catch {
+            this.error = 'Network error';
+          } finally {
+            this.loading = false;
+          }
+        },
+
+        applyResponse(data) {
+          this.game_id      = data.game_id;
+          this.state        = data.state;
+          this.player_hand  = data.player_hand;
+          this.dealer_hand  = data.dealer_hand;
+          this.split_hand   = data.split_hand   ?? null;
+          this.split_result = data.split_result ?? null;
+          this.on_split     = data.on_split     ?? false;
+          this.result       = data.result       ?? null;
+          this.balance      = data.balance;
+        },
+
+        calcValue(cards) {
+          if (!cards) return 0;
+          let total = 0, aces = 0;
+          for (const c of cards) {
+            if (!c.face_up) continue;
+            if      (c.rank === 'A')                           { total += 11; aces++; }
+            else if (['K','Q','J','10'].includes(c.rank))      { total += 10; }
+            else                                               { total += parseInt(c.rank); }
+          }
+          while (total > 21 && aces) { total -= 10; aces--; }
+          return total;
+        },
+
+        suitSymbol(suit) {
+          return { S: '\u2660', H: '\u2665', D: '\u2666', C: '\u2663' }[suit] ?? suit;
+        },
+
+        cardClass(card) {
+          if (!card.face_up) return 'face-down';
+          return ['H','D'].includes(card.suit) ? 'red' : 'black';
+        },
+
+        resultLabel(r) {
+          return { win: 'Win', lose: 'Lose', push: 'Push', blackjack: 'Blackjack!' }[r] ?? '';
+        },
+
+        resultClass(r) {
+          return { win: 'result-win', lose: 'result-lose', push: 'result-push', blackjack: 'result-blackjack' }[r] ?? '';
+        },
+      };
+    }
+  </script>
+
+</body>
+</html>
